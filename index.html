@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sweden Relief STL Generator</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+</head>
+<body>
+<header>
+  <div>
+    <div class="eyebrow">Lantmäteriet · 1 m DTM · GitHub Pages</div>
+    <h1>Sweden Relief STL Generator</h1>
+    <p class="lead">Gelände in Schweden auswählen, 1-m-Höhendaten laden und lokal im Browser als druckbares STL erzeugen.</p>
+  </div>
+</header>
+
+<main>
+  <section class="panel auth-panel">
+    <h2>1 · Lantmäteriet-Zugang</h2>
+    <p class="small">Markhöjdmodell Nedladdning ist kostenlos, der STAC-Zugriff benötigt aber eine freigeschaltete Geotorget-Berechtigung. Die Zugangsdaten bleiben nur im Arbeitsspeicher dieser Seite.</p>
+
+    <div class="grid cols-3">
+      <label>
+        Benutzername
+        <input id="username" autocomplete="username" placeholder="Geotorget-Benutzername">
+      </label>
+      <label>
+        Passwort / Token
+        <input id="password" type="password" autocomplete="current-password" placeholder="Passwort oder Token">
+      </label>
+      <div class="button-cell">
+        <button id="loginBtn">Verbindung testen</button>
+      </div>
+    </div>
+
+    <div class="grid cols-2 hidden" id="collectionRow">
+      <label>
+        Höhendaten-Collection
+        <select id="collectionSelect"></select>
+      </label>
+      <div class="status" id="authStatus">Nicht verbunden</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2 · Gebiet wählen</h2>
+    <div class="map-toolbar">
+      <button id="drawBtn">Auswahl zeichnen</button>
+      <button id="clearBtn" class="secondary">Auswahl löschen</button>
+      <span id="selectionInfo">Noch keine Auswahl.</span>
+    </div>
+    <div id="map"></div>
+
+    <div class="grid cols-4 settings">
+      <label>
+        Drehung
+        <input id="rotation" type="range" min="-180" max="180" value="0" step="1">
+        <span><b id="rotationValue">0</b>°</span>
+      </label>
+
+      <label>
+        Breite Gelände
+        <input id="realWidth" type="number" min="10" step="10" value="1000">
+        <span>m</span>
+      </label>
+
+      <label>
+        Höhe Gelände
+        <input id="realHeight" type="number" min="10" step="10" value="1000">
+        <span>m</span>
+      </label>
+
+      <div class="button-cell">
+        <button id="applySizeBtn" class="secondary">Masse anwenden</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>3 · Modell</h2>
+
+    <div class="grid cols-4">
+      <label>
+        Modellbreite
+        <input id="modelWidth" type="number" min="10" step="1" value="180">
+        <span>mm</span>
+      </label>
+
+      <label>
+        Modellhöhe
+        <input id="modelHeight" type="number" min="10" step="1" value="180">
+        <span>mm</span>
+      </label>
+
+      <label>
+        Basis
+        <input id="baseThickness" type="number" min="0.5" step="0.5" value="3">
+        <span>mm</span>
+      </label>
+
+      <label>
+        Vertikale Überhöhung
+        <input id="verticalExaggeration" type="number" min="0.1" step="0.1" value="1">
+        <span>×</span>
+      </label>
+    </div>
+
+    <div class="grid cols-4">
+      <label>
+        Zielauflösung
+        <select id="targetResolution">
+          <option value="1">1 m · volle Qualität</option>
+          <option value="2" selected>2 m · schneller</option>
+          <option value="4">4 m</option>
+          <option value="8">8 m</option>
+        </select>
+      </label>
+
+      <label>
+        Fixer Kartenmassstab
+        <input id="mapScale" type="number" min="1" step="100" placeholder="z. B. 5000">
+        <span>1 : …</span>
+      </label>
+
+      <div class="button-cell">
+        <button id="applyScaleBtn" class="secondary">Massstab anwenden</button>
+      </div>
+
+      <div class="button-cell">
+        <button id="buildBtn" class="primary">Relief erzeugen</button>
+      </div>
+    </div>
+
+    <div id="progressWrap" class="progress-wrap hidden">
+      <div class="progress"><div id="progressBar"></div></div>
+      <div id="progressText">Vorbereitung …</div>
+    </div>
+
+    <div id="result" class="result hidden">
+      <div id="resultInfo"></div>
+      <button id="downloadBtn">STL herunterladen</button>
+    </div>
+
+    <pre id="log"></pre>
+  </section>
+
+  <section class="panel note">
+    <h2>Datenquelle</h2>
+    <p>Höhendaten: <strong>Lantmäteriet – Markhöjdmodell Nedladdning</strong>, 1-m-Geländemodell, SWEREF 99 TM / RH 2000. Die App liest nur die benötigten Ausschnitte aus den Cloud-Optimized GeoTIFFs und erzeugt das STL vollständig lokal im Browser.</p>
+    <p class="small">Datenlizenz: CC BY 4.0. Quellenangabe bei Weitergabe der daraus erzeugten Produkte beibehalten.</p>
+  </section>
+</main>
+
+<footer>
+  Sweden Relief STL Generator · Reto Speerli
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
